@@ -122,6 +122,7 @@ func init() {
 	initEqElementToName()
 }
 
+//nolint:funlen
 func initEqNameToWeapon() {
 	eqNameToWeapon = make(map[string]EquipmentType)
 
@@ -198,6 +199,7 @@ func initEqNameToWeapon() {
 	eqNameToWeapon["worldspawn"] = EqWorld
 }
 
+//nolint:funlen
 func initEqElementToName() {
 	eqElementToName = make(map[EquipmentType]string)
 	eqElementToName[EqAK47] = "AK-47"
@@ -271,9 +273,9 @@ func MapEquipment(eqName string) EquipmentType {
 type ZoomLevel int
 
 const (
-	ZoomNone = 0
-	ZoomHalf = 1
-	ZoomFull = 2
+	ZoomNone ZoomLevel = 0
+	ZoomHalf ZoomLevel = 1
+	ZoomFull ZoomLevel = 2
 )
 
 // Equipment is a weapon / piece of equipment belonging to a player.
@@ -289,28 +291,32 @@ type Equipment struct {
 
 // String returns a human readable name for the equipment.
 // E.g. 'AK-47', 'UMP-45', 'Smoke Grenade' etc.
-func (e Equipment) String() string {
+func (e *Equipment) String() string {
 	return e.Type.String()
 }
 
 // Class returns the class of the equipment.
 // E.g. pistol, smg, heavy etc.
-func (e Equipment) Class() EquipmentClass {
+func (e *Equipment) Class() EquipmentClass {
 	return e.Type.Class()
 }
 
 // UniqueID returns the unique id of the equipment element.
 // The unique id is a random int generated internally by this library and can be used to differentiate
 // equipment from each other. This is needed because demo-files reuse entity ids.
-func (e Equipment) UniqueID() int64 {
+func (e *Equipment) UniqueID() int64 {
 	return e.uniqueID
 }
 
 // AmmoInMagazine returns the ammo left in the magazine.
 // Returns CWeaponCSBase.m_iClip1 for most weapons and 1 for grenades.
-func (e Equipment) AmmoInMagazine() int {
+func (e *Equipment) AmmoInMagazine() int {
 	if e.Class() == EqClassGrenade {
 		return 1
+	}
+
+	if e.Entity == nil {
+		return 0
 	}
 
 	val, ok := e.Entity.PropertyValue("m_iClip1")
@@ -318,29 +324,32 @@ func (e Equipment) AmmoInMagazine() int {
 		return -1
 	}
 
-	return val.IntVal
+	// need to subtract 1 as m_iClip1 is nrOfBullets + 1
+	return val.IntVal - 1
 }
 
 // AmmoType returns the weapon's ammo type, mostly (only?) relevant for grenades.
-func (e Equipment) AmmoType() int {
+func (e *Equipment) AmmoType() int {
 	return getInt(e.Entity, "LocalWeaponData.m_iPrimaryAmmoType")
 }
 
 // ZoomLevel returns how far the player has zoomed in on the weapon.
 // Only weapons with scopes have a valid zoom level.
-func (e Equipment) ZoomLevel() ZoomLevel {
+func (e *Equipment) ZoomLevel() ZoomLevel {
 	if e.Entity == nil {
 		return 0
 	}
 
+	// if the property doesn't exist we return 0 by default
 	val, _ := e.Entity.PropertyValue("m_zoomLevel")
+
 	return ZoomLevel(val.IntVal)
 }
 
 // AmmoReserve returns the ammo left available for reloading.
 // Returns CWeaponCSBase.m_iPrimaryReserveAmmoCount for most weapons and 'Owner.AmmoLeft[AmmoType] - 1' for grenades.
 // Use AmmoInMagazine() + AmmoReserve() to quickly get the amount of grenades a player owns.
-func (e Equipment) AmmoReserve() int {
+func (e *Equipment) AmmoReserve() int {
 	if e.Class() == EqClassGrenade {
 		if e.Owner != nil {
 			// minus one for 'InMagazine'
@@ -350,7 +359,13 @@ func (e Equipment) AmmoReserve() int {
 		return 0
 	}
 
+	if e.Entity == nil {
+		return 0
+	}
+
+	// if the property doesn't exist we return 0 by default
 	val, _ := e.Entity.PropertyValue("m_iPrimaryReserveAmmoCount")
+
 	return val.IntVal
 }
 

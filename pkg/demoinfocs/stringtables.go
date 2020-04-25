@@ -21,7 +21,7 @@ const (
 
 type playerInfo struct {
 	version     int64
-	xuid        int64
+	xuid        uint64
 	name        string
 	userID      int
 	guid        string
@@ -107,7 +107,7 @@ func (p *parser) parseSingleStringTable(name string) {
 	}
 }
 
-func (p *parser) handleUpdateStringTable(tab *msg.CSVCMsg_UpdateStringTable) {
+func (p *parser) handleUpdateStringTable(tab *msg.CSVCMsg_UpdateStringTable) { //nolint:wsl
 	// No need for recoverFromUnexpectedEOF here as we do that in processStringTable already
 
 	cTab := p.stringTables[tab.TableId]
@@ -125,7 +125,7 @@ func (p *parser) handleUpdateStringTable(tab *msg.CSVCMsg_UpdateStringTable) {
 	}
 }
 
-func (p *parser) handleCreateStringTable(tab *msg.CSVCMsg_CreateStringTable) {
+func (p *parser) handleCreateStringTable(tab *msg.CSVCMsg_CreateStringTable) { //nolint:wsl
 	// No need for recoverFromUnexpectedEOF here as we do that in processStringTable already
 
 	p.processStringTable(tab)
@@ -135,6 +135,7 @@ func (p *parser) handleCreateStringTable(tab *msg.CSVCMsg_CreateStringTable) {
 	p.eventDispatcher.Dispatch(events.StringTableCreated{TableName: tab.Name})
 }
 
+//nolint:funlen,gocognit
 func (p *parser) processStringTable(tab *msg.CSVCMsg_CreateStringTable) {
 	defer func() {
 		p.setError(recoverFromUnexpectedEOF(recover()))
@@ -180,7 +181,7 @@ func (p *parser) processStringTable(tab *msg.CSVCMsg_CreateStringTable) {
 		}
 
 		var entry string
-		if br.ReadBit() {
+		if br.ReadBit() { //nolint:wsl
 			if br.ReadBit() {
 				idx := br.ReadInt(5)
 				bytes2cp := int(br.ReadInt(5))
@@ -200,7 +201,7 @@ func (p *parser) processStringTable(tab *msg.CSVCMsg_CreateStringTable) {
 		hist = append(hist, entry)
 
 		var userdata []byte
-		if br.ReadBit() {
+		if br.ReadBit() { //nolint:wsl
 			if tab.UserDataFixedSize {
 				// Should always be < 8 bits => use faster ReadBitsToByte() over ReadBits()
 				userdata = []byte{br.ReadBitsToByte(int(tab.UserDataSizeBits))}
@@ -223,6 +224,7 @@ func (p *parser) processStringTable(tab *msg.CSVCMsg_CreateStringTable) {
 			if err != nil {
 				panic("WTF VOLVO PLS")
 			}
+
 			p.stParser.SetInstanceBaseline(int(classID), userdata)
 
 		case stNameModelPreCache:
@@ -247,7 +249,7 @@ func parsePlayerInfo(reader io.Reader) *playerInfo {
 
 	res := &playerInfo{
 		version:     int64(binary.BigEndian.Uint64(br.ReadBytes(8))),
-		xuid:        int64(binary.BigEndian.Uint64(br.ReadBytes(8))),
+		xuid:        binary.BigEndian.Uint64(br.ReadBytes(8)),
 		name:        br.ReadCString(playerNameMaxLength),
 		userID:      int(int32(binary.BigEndian.Uint32(br.ReadBytes(4)))),
 		guid:        br.ReadCString(guidLength),

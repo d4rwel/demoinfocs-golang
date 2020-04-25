@@ -44,16 +44,19 @@ func TestDemoHeader(t *testing.T) {
 }
 
 func TestDemoHeader_FrameRate_PlaybackTime_Zero(t *testing.T) {
-	assert.Zero(t, DemoHeader{}.FrameRate())
+	assert.Zero(t, new(DemoHeader).FrameRate())
 }
 
 func TestDemoHeader_FrameTime_PlaybackFrames_Zero(t *testing.T) {
-	assert.Zero(t, DemoHeader{}.FrameTime())
+	assert.Zero(t, new(DemoHeader).FrameTime())
 }
 
 func TestTeamState_Team(t *testing.T) {
-	assert.Equal(t, TeamTerrorists, NewTeamState(TeamTerrorists, nil).Team())
-	assert.Equal(t, TeamCounterTerrorists, NewTeamState(TeamCounterTerrorists, nil).Team())
+	tState := NewTeamState(TeamTerrorists, nil)
+	ctState := NewTeamState(TeamCounterTerrorists, nil)
+
+	assert.Equal(t, TeamTerrorists, tState.Team())
+	assert.Equal(t, TeamCounterTerrorists, ctState.Team())
 }
 
 func TestTeamState_Members(t *testing.T) {
@@ -113,6 +116,37 @@ func TestTeamState_MoneySpentTotal(t *testing.T) {
 	assert.Equal(t, 300, state.MoneySpentTotal())
 }
 
+func TestConvertSteamIDTxtTo32(t *testing.T) {
+	id, err := ConvertSteamIDTxtTo32("STEAM_0:1:26343269")
+
+	assert.Nil(t, err)
+	assert.Equal(t, uint32(52686539), id)
+}
+
+func TestConvertSteamIDTxtTo32_Error(t *testing.T) {
+	id, err := ConvertSteamIDTxtTo32("STEAM_0:1:a")
+
+	assert.Equal(t, uint32(0), id)
+	assert.NotNil(t, err)
+
+	id, err = ConvertSteamIDTxtTo32("STEAM_0:b:21643603")
+
+	assert.Equal(t, uint32(0), id)
+	assert.NotNil(t, err)
+}
+
+func TestConvertSteamID32To64(t *testing.T) {
+	id := ConvertSteamID32To64(52686539)
+
+	assert.Equal(t, uint64(76561198012952267), id)
+}
+
+func TestConvertSteamID64To32(t *testing.T) {
+	id := ConvertSteamID64To32(76561198012952267)
+
+	assert.Equal(t, uint32(52686539), id)
+}
+
 type demoInfoProviderMock struct {
 	tickRate             float64
 	ingameTick           int
@@ -157,7 +191,7 @@ func entityWithProperty(propName string, value st.PropertyValue) *stfake.Entity 
 	prop.On("Value").Return(value)
 
 	entity.On("Property", propName).Return(prop)
-	entity.On("PropertyValue", propName).Return(prop, true)
+	entity.On("PropertyValue", propName).Return(value, true)
 	entity.On("PropertyValueMust", propName).Return(value)
 
 	return entity

@@ -3,14 +3,18 @@ package demoinfocs
 import (
 	"fmt"
 
-	"github.com/markus-wa/go-unassert"
+	unassert "github.com/markus-wa/go-unassert"
 
+	common "github.com/markus-wa/demoinfocs-golang/v2/pkg/demoinfocs/common"
 	events "github.com/markus-wa/demoinfocs-golang/v2/pkg/demoinfocs/events"
 	msg "github.com/markus-wa/demoinfocs-golang/v2/pkg/demoinfocs/msg"
 )
 
 func (p *parser) handleUserMessage(um *msg.CSVCMsg_UserMessage) {
-	p.userMessageHandler.handler(msg.ECstrike15UserMessages(um.MsgType))(um)
+	handler := p.userMessageHandler.handler(msg.ECstrike15UserMessages(um.MsgType))
+	if handler != nil {
+		handler(um)
+	}
 }
 
 type userMessageHandler struct {
@@ -22,7 +26,8 @@ func (umh userMessageHandler) handler(msgType msg.ECstrike15UserMessages) userMe
 	if handler, eventKnown := umh.msgTypeToHandler[msgType]; eventKnown {
 		return handler
 	}
-	return func(*msg.CSVCMsg_UserMessage) { /* NOP */ }
+
+	return nil
 }
 
 func (umh userMessageHandler) dispatch(event interface{}) {
@@ -119,12 +124,21 @@ func (umh userMessageHandler) rankUpdate(um *msg.CSVCMsg_UserMessage) {
 	}
 
 	for _, v := range st.RankUpdate {
+		// find player (if he hasn't disconnected already)
+		var player *common.Player
+		for _, pl := range umh.parser.gameState.playersByUserID { //nolint:wsl
+			if pl.SteamID32() == uint32(v.AccountId) {
+				player = pl
+			}
+		}
+
 		umh.dispatch(events.RankUpdate{
 			SteamID32:  v.AccountId,
 			RankOld:    int(v.RankOld),
 			RankNew:    int(v.RankNew),
 			WinCount:   int(v.NumWins),
 			RankChange: v.RankChange,
+			Player:     player,
 		})
 	}
 }

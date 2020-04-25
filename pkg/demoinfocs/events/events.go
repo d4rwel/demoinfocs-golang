@@ -142,6 +142,11 @@ type Kill struct {
 	IsHeadshot        bool
 }
 
+// IsWallBang returns true if PenetratedObjects is larger than 0.
+func (k Kill) IsWallBang() bool {
+	return k.PenetratedObjects > 0
+}
+
 // BotTakenOver signals that a player took over a bot.
 type BotTakenOver struct {
 	Taker *common.Player
@@ -410,11 +415,18 @@ type ChatMessage struct {
 // RankUpdate signals the new rank. Not sure if this
 // only occurs if the rank changed.
 type RankUpdate struct {
-	SteamID32  int32
+	SteamID32  int32 // 32-bit variant of the SteamID. See https://developer.valvesoftware.com/wiki/SteamID
 	RankChange float32
 	RankOld    int
 	RankNew    int
 	WinCount   int
+	Player     *common.Player // may be nil if the player has already disconnected
+}
+
+// SteamID64 converts SteamID32 to the 64-bit SteamID variant and returns the result.
+// See https://developer.valvesoftware.com/wiki/SteamID
+func (ru RankUpdate) SteamID64() uint64 {
+	return common.ConvertSteamID32To64(uint32(ru.SteamID32))
 }
 
 // ItemEquip signals an item was equipped.

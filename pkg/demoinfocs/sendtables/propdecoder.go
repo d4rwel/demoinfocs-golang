@@ -1,3 +1,4 @@
+//nolint:varcheck,deadcode
 package sendtables
 
 import (
@@ -79,14 +80,9 @@ type PropertyValue struct {
 	FloatVal  float32
 }
 
-// BoolVal returns true if IntVal == 1.
+// BoolVal returns true if IntVal > 0.
 func (v PropertyValue) BoolVal() bool {
 	return v.IntVal > 0
-}
-
-// Float64Val returns FloatVal converted from float32 to float64.
-func (v PropertyValue) Float64Val() float64 {
-	return float64(v.FloatVal)
 }
 
 type propertyDecoder struct{}
@@ -121,6 +117,7 @@ func (propertyDecoder) decodeInt(prop *sendTableProperty, reader *bit.BitReader)
 		if prop.flags.hasFlagSet(propFlagUnsigned) {
 			return int(reader.ReadVarInt32())
 		}
+
 		return int(reader.ReadSignedVarInt32())
 	}
 
@@ -137,6 +134,7 @@ func (propertyDecoder) decodeFloat(prop *sendTableProperty, reader *bit.BitReade
 	}
 
 	dwInterp := reader.ReadInt(prop.numberOfBits)
+
 	return prop.lowValue + ((prop.highValue - prop.lowValue) * (float32(dwInterp) / float32((int(1)<<uint(prop.numberOfBits))-1)))
 }
 
@@ -325,6 +323,7 @@ func (propertyDecoder) decodeString(reader *bit.BitReader) string {
 	if length > dataTableMaxStringLength {
 		length = dataTableMaxStringLength
 	}
+
 	return reader.ReadCString(length)
 }
 

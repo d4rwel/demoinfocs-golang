@@ -6,22 +6,15 @@ import (
 
 	"github.com/golang/geo/r3"
 
+	constants "github.com/markus-wa/demoinfocs-golang/v2/internal/constants"
 	st "github.com/markus-wa/demoinfocs-golang/v2/pkg/demoinfocs/sendtables"
-)
-
-const (
-	maxEdictBits                 = 11
-	entityHandleIndexMask        = (1 << maxEdictBits) - 1
-	entityHandleSerialNumberBits = 10
-	entityHandleBits             = maxEdictBits + entityHandleSerialNumberBits
-	invalidEntityHandle          = (1 << entityHandleBits) - 1
 )
 
 // Player contains mostly game-relevant player information.
 type Player struct {
 	demoInfoProvider demoInfoProvider // provider for demo info such as tick-rate or current tick
 
-	SteamID           int64              // int64 representation of the User's Steam ID
+	SteamID64         uint64             // 64-bit representation of the user's Steam ID. See https://developer.valvesoftware.com/wiki/SteamID
 	LastAlivePosition r3.Vector          // The location where the player was last alive. Should be equal to Position if the player is still alive.
 	UserID            int                // Mostly used in game-events to address this player
 	Name              string             // Steam / in-game user name
@@ -51,6 +44,12 @@ func (p *Player) String() string {
 	return p.Name
 }
 
+// SteamID32 converts SteamID64 to the 32-bit SteamID variant and returns the result.
+// See https://developer.valvesoftware.com/wiki/SteamID
+func (p *Player) SteamID32() uint32 {
+	return ConvertSteamID64To32(p.SteamID64)
+}
+
 // IsAlive returns true if the Hp of the player are > 0.
 func (p *Player) IsAlive() bool {
 	return p.Health() > 0
@@ -70,7 +69,7 @@ func (p *Player) IsAirborne() bool {
 
 	groundEntityHandle := p.Entity.Property("m_hGroundEntity").Value().IntVal
 
-	return groundEntityHandle == invalidEntityHandle
+	return groundEntityHandle == constants.InvalidEntityHandle
 }
 
 // FlashDurationTime returns the duration of the blinding effect as time.Duration instead of float32 in seconds.
@@ -123,7 +122,7 @@ This isn't very conclusive but it looks like IsFlashed isn't super reliable curr
 
 // Used internally to set the active weapon, see ActiveWeapon()
 func (p *Player) activeWeaponID() int {
-	return getInt(p.Entity, "m_hActiveWeapon") & entityHandleIndexMask
+	return getInt(p.Entity, "m_hActiveWeapon") & constants.EntityHandleIndexMask
 }
 
 // ActiveWeapon returns the currently active / equipped weapon of the player.
@@ -148,7 +147,6 @@ func (p *Player) IsSpottedBy(other *Player) bool {
 		return false
 	}
 
-	// TODO extract ClientSlot() function
 	clientSlot := other.EntityID - 1
 	bit := uint(clientSlot)
 
@@ -280,9 +278,9 @@ func (p *Player) Velocity() r3.Vector {
 	}
 
 	return r3.Vector{
-		X: p.Entity.PropertyValueMust("localdata.m_vecVelocity[0]").Float64Val(),
-		Y: p.Entity.PropertyValueMust("localdata.m_vecVelocity[1]").Float64Val(),
-		Z: p.Entity.PropertyValueMust("localdata.m_vecVelocity[2]").Float64Val(),
+		X: float64(p.Entity.PropertyValueMust("localdata.m_vecVelocity[0]").FloatVal),
+		Y: float64(p.Entity.PropertyValueMust("localdata.m_vecVelocity[1]").FloatVal),
+		Z: float64(p.Entity.PropertyValueMust("localdata.m_vecVelocity[2]").FloatVal),
 	}
 }
 
